@@ -90,7 +90,7 @@ The HF dataset stores `image_path` values pointing to image files from **SciMMIR
 
 ### Step 1 — Download SciMMIR images
 
-Use the provided helper script, which loads the [SciMMIR HF dataset](https://huggingface.co/datasets/Wusiwei/SciMMIR), matches the filenames used in M2-Verify-Gen, and saves them locally:
+Use the provided helper script, which loads the [SciMMIR HF dataset](https://huggingface.co/datasets/m-a-p/SciMMIR), matches the filenames used in M2-Verify-Gen, and saves them locally:
 
 ```bash
 # Download images for the test split only (~30 GB)
@@ -147,6 +147,6 @@ python examples/load_gen.py --image-root ~/scimmir_images
   title     = {M2-Verify: A Large-Scale Multidomain Benchmark for Checking Multimodal Claim Consistency},
   author    = {Ansari, Abolfazl and Zhang, Delvin Ce and Zou, Zhuoyang and Yin, Wenpeng and Lee, Dongwon},
   journal   = {arXiv preprint},
-  year      = {2025}
+  year      = {2026}
 }
 ```

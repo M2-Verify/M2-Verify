@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """Download SciMMIR images needed by M2-Verify-Gen.
 
-Uses the SciMMIR HuggingFace dataset (Wusiwei/SciMMIR) to fetch only the images
+Uses the SciMMIR HuggingFace dataset (m-a-p/SciMMIR) to fetch only the images
 referenced in M2-Verify-Gen, saving them as flat PNG files.
 
-Storage estimates: test ~30 GB, full dataset ~150 GB.
+Storage estimates: test split ~30 GB, full dataset ~150 GB.
 
 Usage:
     # test split only (recommended to start)
     python examples/download_scimmir_images.py --output-dir ~/scimmir_images --split test
 
-    # single domain
+    # single domain to save space
     python examples/download_scimmir_images.py --output-dir ~/scimmir_images --split test --domain cs
 
     # everything (~150 GB)
@@ -48,28 +48,31 @@ def main() -> None:
             needed.add(row["image_path"])
     print(f"  {len(needed):,} unique images needed")
 
-    # Stream SciMMIR and save matching images
-    print("Streaming SciMMIR (Wusiwei/SciMMIR) to find matches...")
-    scimmir = load_dataset("Wusiwei/SciMMIR", split="train", streaming=True)
+    # Stream all SciMMIR splits to find and save matching images.
+    # SciMMIR uses `file_name_index` for the filename (e.g. $2305.00001v1-Figure2-1.png).
+    print("Streaming SciMMIR (m-a-p/SciMMIR) to find matches...")
     saved = 0
-    for row in tqdm(scimmir, desc="Scanning SciMMIR"):
-        fname = row.get("image_path") or row.get("figure_id") or row.get("id", "")
-        if fname not in needed:
-            continue
-        dest = os.path.join(out, fname)
-        if not os.path.exists(dest):
-            img = row.get("image")
-            if img is not None:
-                img.save(dest)
-                saved += 1
-        if saved >= len(needed):
+    remaining = set(needed)
+    for scimmir_split in ["train", "validation", "test"]:
+        if not remaining:
             break
+        scimmir = load_dataset("m-a-p/SciMMIR", split=scimmir_split, streaming=True)
+        for row in tqdm(scimmir, desc=f"Scanning SciMMIR/{scimmir_split}"):
+            fname = row.get("file_name_index", "")
+            if fname not in remaining:
+                continue
+            dest = os.path.join(out, fname)
+            if not os.path.exists(dest):
+                img = row.get("image")
+                if img is not None:
+                    img.save(dest)
+            remaining.discard(fname)
+            saved += 1
 
     print(f"Done. Saved {saved:,} images to {out}")
-    missing = len(needed) - saved
-    if missing:
-        print(f"  {missing:,} images not found in SciMMIR HF stream.")
-        print("  For those, follow: https://github.com/Wusiwei0410/SciMMIR")
+    if remaining:
+        print(f"  {len(remaining):,} images not found in SciMMIR.")
+        print("  See: https://github.com/Wusiwei0410/SciMMIR")
 
 
 if __name__ == "__main__":
