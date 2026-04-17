@@ -11,12 +11,12 @@ def main() -> None:
     ds = load_dataset("AbolfazlAnsari/M2-Verify-Med", split="train[:1]")
     row = ds[0]
 
-    print(f"\nclaim            : {row['claim']}")
-    print(f"label            : {row['label']}")
-    print(f"perturbation_type: {row.get('perturbation_type', 'N/A')}")
-    print(f"caption          : {row['caption'][:120]}...")
-    print(f"explanation      : {row.get('explanation', '')[:120]}...")
-    print(f"image type       : {type(row['image']).__name__}  size={row['image'].size}")
+    print(f"\nclaim      : {row['claim']}")
+    print(f"label      : {row['label']}")
+    print(f"perturbation: {row.get('perturbation')}")
+    print(f"caption    : {row['caption'][:120]}...")
+    print(f"explanation: {row.get('explanation', '')[:120]}...")
+    print(f"image      : {type(row['image']).__name__}  size={row['image'].size}")
 
 
 if __name__ == "__main__":

@@ -5,9 +5,9 @@
 | Subset | Source | Size | Images |
 |---|---|---|---|
 | **M2-Verify-Med** | PubMed Central (via MedICaT) | 15,953 | Embedded in HF dataset |
-| **M2-Verify-Gen** | arXiv (via SciMMIR) | 453,311 | Requires SciMMIR image files |
+| **M2-Verify-Gen** | arXiv (via SciMMIR) | 453,311 | Requires SciMMIR images (~150 GB full) |
 
-Each instance contains a `claim`, `caption`, visual evidence (`image` / `image_path`), a binary `label` (`support` / `refute`), and a natural-language `explanation` (~100 words).
+Each instance contains a `claim`, `caption`, visual evidence, a binary `label` (`support` / `refute`), and a natural-language `explanation` (~100 words).
 
 ---
 
@@ -28,8 +28,10 @@ Each instance contains a `claim`, `caption`, visual evidence (`image` / `image_p
 | `explanation` | `str` | ✓ | ✓ |
 | `image` | `PIL.Image` | ✓ | — |
 | `image_path` | `str` | — | ✓ |
-| `perturbation_type` | `str` | ✓ | — |
-| `domain` | `str` | — | ✓ |
+| `perturbation` | `str` | ✓ | — |
+| `categories` | `str` | — | ✓ |
+
+**Splits:** `train` / `validation` / `test` — 60 / 20 / 20, enforced at the paper level to prevent leakage.
 
 ---
 
@@ -54,23 +56,54 @@ row = ds[0]
 
 print(row["claim"])
 print(row["label"])          # "support" or "refute"
-print(row["perturbation_type"])  # e.g. "Location Shift" (refuted only)
+print(row["perturbation"])   # perturbation type for refuted claims, else None
 row["image"].show()          # PIL.Image
 ```
 
-**Splits:** `train` / `validation` / `test` (60 / 20 / 20, paper-level split)
+**Perturbation types** (refuted claims only):
+
+| Type | Example |
+|---|---|
+| Status Swap | No evidence of X → Evidence of X |
+| Numeric Change | Tumor size 2 cm → 4 cm |
+| Attribute Flip | significant edema ↔ minimal edema |
+| Directional Flip | A > B ↔ B > A |
+| Diagnosis Swap | cancer ↔ infection |
+| Location Shift | thalamus ↔ basal ganglia |
+| Certainty Shift | suspicious for → diagnostic of |
 
 ---
 
 ## M2-Verify-Gen
 
-The HF dataset stores `image_path` strings pointing to image files from **SciMMIR** — you need to obtain those image files separately.
+The HF dataset stores `image_path` values pointing to image files from **SciMMIR** (arXiv figures). You must obtain those images separately.
 
-### Step 1 — Get SciMMIR images
+### Storage estimate
 
-M2-Verify-Gen is built on top of the [SciMMIR](https://github.com/Wusiwei0410/SciMMIR) dataset (arXiv figures). Download or request the full image archive from the SciMMIR authors, then note the local path to the root image directory (referred to below as `IMAGE_ROOT`).
+| What | Approx. size |
+|---|---|
+| Full dataset (all splits) | ~150 GB |
+| Test split only | ~30 GB |
+| Single domain (e.g. `cs`) | ~10–15 GB |
 
-The `image_path` values in M2-Verify-Gen are relative paths matching the structure used in SciMMIR, so your `IMAGE_ROOT` should be the base directory under which those paths resolve.
+> If disk space is limited, use the helper script below to download only the split or domain you need.
+
+### Step 1 — Download SciMMIR images
+
+Use the provided helper script, which loads the [SciMMIR HF dataset](https://huggingface.co/datasets/Wusiwei/SciMMIR), matches the filenames used in M2-Verify-Gen, and saves them locally:
+
+```bash
+# Download images for the test split only (~30 GB)
+python examples/download_scimmir_images.py --output-dir ~/scimmir_images --split test
+
+# Download a single domain (saves space)
+python examples/download_scimmir_images.py --output-dir ~/scimmir_images --split test --domain cs
+
+# Download everything (all splits, ~150 GB)
+python examples/download_scimmir_images.py --output-dir ~/scimmir_images
+```
+
+Alternatively, follow the official [SciMMIR download instructions](https://github.com/Wusiwei0410/SciMMIR) to obtain the full image archive.
 
 ### Step 2 — Load and use
 
@@ -79,52 +112,30 @@ import os
 from PIL import Image
 from datasets import load_dataset
 
-IMAGE_ROOT = "/path/to/scimmir/images"   # set this
+IMAGE_ROOT = os.path.expanduser("~/scimmir_images")   # set to your download path
 
-ds = load_dataset("AbolfazlAnsari/M2-Verify-Gen", split="train")
+ds = load_dataset("AbolfazlAnsari/M2-Verify-Gen", split="test")
 row = ds[0]
 
 img = Image.open(os.path.join(IMAGE_ROOT, row["image_path"])).convert("RGB")
 print(row["claim"])
-print(row["label"])     # "support" or "refute"
-print(row["domain"])    # e.g. "cs", "math", "physics"
+print(row["label"])       # "support" or "refute"
+print(row["categories"])  # arXiv category string, e.g. "eess.SP cs.LG"
 print(img.size)
 ```
 
-**Splits:** `train` / `validation` / `test` (60 / 20 / 20, paper-level split)
-
----
-
-## Perturbation Types (Med only)
-
-Refuted claims in M2-Verify-Med are generated via one of seven expert-curated perturbation types:
-
-| # | Type | Example |
-|---|---|---|
-| 1 | Status Swap | No evidence of X → Evidence of X |
-| 2 | Numeric Change | Tumor size 2 cm → 4 cm |
-| 3 | Attribute Flip | significant edema ↔ minimal edema |
-| 4 | Directional Flip | A > B ↔ B > A |
-| 5 | Diagnosis Swap | cancer ↔ infection |
-| 6 | Location Shift | thalamus ↔ basal ganglia |
-| 7 | Certainty Shift | suspicious for → diagnostic of |
-
----
-
-## Domains (Gen only)
-
-M2-Verify-Gen spans 16 arXiv categories: `astro`, `cond`, `cs`, `econ`, `eess`, `gr-qc`, `hep`, `math`, `math-ph`, `nlin`, `nucl-th`, `physics`, `q-bio`, `q-fin`, `quant-ph`, `stat`.
+**Domains (arXiv categories):** `astro`, `cond`, `cs`, `econ`, `eess`, `gr-qc`, `hep`, `math`, `math-ph`, `nlin`, `nucl-th`, `physics`, `q-bio`, `q-fin`, `quant-ph`, `stat`
 
 ---
 
 ## Starter scripts
 
 ```bash
-# Med
+# Med — images are already inside HF
 python examples/load_med.py
 
-# Gen (set --image-root to your SciMMIR image directory)
-python examples/load_gen.py --image-root /path/to/scimmir/images
+# Gen — set --image-root to wherever you saved SciMMIR images
+python examples/load_gen.py --image-root ~/scimmir_images
 ```
 
 ---
