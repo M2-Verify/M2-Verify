@@ -143,7 +143,7 @@ python examples/load_gen.py --image-root ~/scimmir_images
 ## Citation
 
 ```bibtex
-@article{ansari2025m2verify,
+@article{ansari2026m2verify,
   title     = {M2-Verify: A Large-Scale Multidomain Benchmark for Checking Multimodal Claim Consistency},
   author    = {Ansari, Abolfazl and Zhang, Delvin Ce and Zou, Zhuoyang and Yin, Wenpeng and Lee, Dongwon},
   journal   = {arXiv preprint},
